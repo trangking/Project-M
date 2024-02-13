@@ -1,0 +1,22 @@
+.containerAdmin {
+    /* background-color: #282c34; */
+    
+    /* border: 1px solid #ccc; */
+    margin: 0;
+    
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    
+    
+  }
+
+.formLogincss{
+    text-align: left; /* Optional: Center text within the container */
+    padding: 20px;
+    padding-top: 40px;
+    width: 500px;
+    align-items: center;
+    justify-content: center;
+
+}
