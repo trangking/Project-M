@@ -5,7 +5,9 @@ import Tabs from "react-bootstrap/Tabs";
 import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import "../css/admin.css";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchRequestData } from "../firebase/firebase1";
+import "./adminpanel.css";
 
 const Adminpanel = () => {
   const [email, setemail] = useState("");
@@ -16,6 +18,7 @@ const Adminpanel = () => {
   const [pssChange, changePassword] = useState("");
   const [nameChange, changeName] = useState("");
   const [phoneChange, changePhone] = useState("");
+  const [request, setRequest] = useState([]);
 
   const handleClose = () => setShow(false);
   const handleShow = (data) => {
@@ -25,6 +28,13 @@ const Adminpanel = () => {
     setpassword(data.passwordLogin);
     setemail(data.emailLogin);
   };
+  useEffect(() => {
+    const fetchData = async () => {
+      const requestData = await fetchRequestData();
+      setRequest(requestData);
+    };
+    fetchData();
+  }, []);
 
   const list_doctor = [
     {
@@ -112,6 +122,39 @@ const Adminpanel = () => {
     );
   };
 
+  const table_appointments = (data) => {
+    return (
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>order</th>
+            <th>userEmail</th>
+            <th>Petname</th>
+            <th>petSym</th>
+            <th>typePet</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request &&
+            request.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.userEmail}</td>
+                <td>{val.petName}</td>
+                <td>{val.petSym}</td>
+                <td>{val.typePet}</td>
+                <td className="Controlbutton">
+                  <Button variant="outline-success">approve</Button>
+                  <Button variant="outline-danger">Not approved</Button>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </Table>
+    );
+  };
+
   return (
     <div>
       <div className="container text-center">
@@ -131,7 +174,9 @@ const Adminpanel = () => {
             {table_doctor(list_member)}
           </Tab>
           <Tab eventKey="vaccine" title="Vaccine"></Tab>
-          <Tab eventKey="appointment" title="Appointments"></Tab>
+          <Tab eventKey="appointment" title="Appointments">
+            {table_appointments(request)}
+          </Tab>
         </Tabs>
       </div>
 
