@@ -2,20 +2,21 @@ import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase/firebase1";
+import { auth, db } from "../firebase/firebase1";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import "../css/user.css";
+import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 
 const Login = () => {
   const [userInfo, setuserInfo] = useState();
   const [token, setToken] = useState();
+
   const navigate = useNavigate();
   const user = auth.currentUser;
 
   useEffect(() => {
     if (user) {
-      console.log(user);
-      navigate("/member");
+      isAdmin(user.uid);
     }
   }, []);
 
@@ -32,10 +33,7 @@ const Login = () => {
         // The signed-in user info.
         const user = result.user;
         setuserInfo(user);
-
-        navigate("/member");
-        // IdP data available using getAdditionalUserInfo(result)
-        // ...
+        isAdmin(user.uid);
       })
       .catch((error) => {
         // Handle Errors here.
@@ -49,9 +47,23 @@ const Login = () => {
       });
   };
 
+  const isAdmin = async (check) => {
+    const querySnapshot = await getDocs(collection(db, "admin"));
+    let listAdmin = [];
+    querySnapshot.forEach((doc) => {
+      // doc.data() is never undefined for query doc snapshots
+      listAdmin.push(doc.data().adminUid);
+    });
+
+    if (listAdmin.includes(check)) {
+      navigate("/admin/adminpanel");
+    } else {
+      navigate("/member");
+    }
+  };
+
   const test = () => {
-    console.log(user);
-    console.log(token);
+    console.log(user.uid);
   };
 
   return (
@@ -61,12 +73,14 @@ const Login = () => {
           <h1>Sign In</h1>
         </div>
 
-        <Button className="mt-3" variant="danger" type="submit" onClick={signIn_google}>
+        <Button
+          className="mt-3"
+          variant="danger"
+          type="submit"
+          onClick={signIn_google}
+        >
           Sing In with Google
         </Button>
-        {/* <Button variant="primary" type="submit" onClick={test}>
-            test
-          </Button> */}
       </div>
     </div>
   );
