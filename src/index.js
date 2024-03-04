@@ -7,6 +7,7 @@ import Admin from "./admin/index.js";
 import Adminpanel from "./admin/adminpanel.js";
 import Login from "./login/index.js"
 import Member from "./member/index.js"
+import Doctor from "./doctor/index.js"
 
 
 import reportWebVitals from './reportWebVitals';
@@ -22,6 +23,7 @@ root.render(
         <Route path="/admin/adminpanel" element={<Adminpanel />} />
         <Route path="/login" element={<Login />} />
         <Route path="/member" element={<Member />} />
+        <Route path="/doctor" element={<Doctor />} />
         
         
       </Routes>

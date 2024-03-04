@@ -6,7 +6,7 @@ import Modal from "react-bootstrap/Modal";
 import Row from "react-bootstrap/Row";
 import Alert from "react-bootstrap/Alert";
 import Table from "react-bootstrap/Table";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase/firebase1";
@@ -17,8 +17,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const Member = () => {
-  const [userInfo, setuserInfo] = useState();
-  const [token, setToken] = useState();
+  
   const [show, setShow] = useState(false);
   const [startDate, setStartDate] = useState(new Date());
   const navigate = useNavigate();
@@ -28,13 +27,18 @@ const Member = () => {
   const [petSym, setPetSym] = useState("");
   const [alert, setAlert] = useState(false);
   const [listRequest, setRequest] = useState([]);
+  const [appointList, setAppoint] = useState([]);
+  const formRef = useRef(null);
+
+ 
 
   useEffect(() => {
     if (!user) navigate("/login");
-    else queryData();
+    else {
+      queryData();
+      
+    }
   }, []);
-
-  
 
   const handleClose = () => {
     setShow(false);
@@ -43,21 +47,30 @@ const Member = () => {
     setShow(true);
   };
 
+  //get data where user uid is bla bla
   const queryData = async () => {
     const q = query(
       collection(db, "request"),
       where("userUid", "==", user.uid)
     );
+
+    const appointQuery = query(
+      collection(db, "appointment"),
+      where("userUid", "==", user.uid)
+    );
     let listObj = [];
+    let appointListQuery = [];
     const querySnapshot = await getDocs(q);
+    const appointSnapshot = await getDocs(appointQuery);
     querySnapshot.forEach((doc) => {
-      listObj.push(doc.data())
-      
-      // doc.data() is never undefined for query doc snapshots
-      
+      listObj.push(doc.data());
     });
-    console.log("This is list obj", listObj);
-    setRequest(listObj)
+
+    appointSnapshot.forEach((doc) => {
+      appointListQuery.push(doc.data());
+    });
+    setAppoint(appointListQuery)
+    setRequest(listObj);
   };
 
   const submit_for_request = async (event) => {
@@ -94,18 +107,17 @@ const Member = () => {
       petSym: petSym,
       dateForAppoint: dateToappoint,
     });
+    console.log("Pet Type:", petType);
+    console.log("Pet Name:", petName);
+    console.log("Pet Symptom:", petSym);
+    console.log("Appointment Date:", dateToappoint);
     setAlert(true);
     setTimeout(() => {
       setAlert(false);
       setShow(false);
-    }, 3000);
+    }, 1000);
     queryData();
-  };
-
-  const getTest = () => {
-    console.log(user.uid);
-    console.log(user.email);
-    console.log(listRequest);
+    formRef.current.reset();
   };
 
   const signOutFunc = async () => {
@@ -129,20 +141,46 @@ const Member = () => {
             <th>Pet Name</th>
             <th>Pet Symptom</th>
             <th>On date</th>
-            
           </tr>
         </thead>
         <tbody>
           {data.map((val, index) => (
             <tr key={index}>
-              <td>{index+1}</td>
+              <td>{index + 1}</td>
               <td>{val.userEmail}</td>
               <td>{val.typePet}</td>
               <td>{val.petName}</td>
               <td>{val.petSym}</td>
               <td>{val.dateForAppoint}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    );
+  };
+
+  const table_appointment = (data) => {
+    return (
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>#</th>
+            
+            <th>Pet(type)</th>
+            <th>Pet Name</th>
+            <th>Pet Symptom</th>
+            <th>On date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((val, index) => (
+            <tr key={index}>
+              <td>{index + 1}</td>
               
-              
+              <td>{val.typePet}</td>
+              <td>{val.petName}</td>
+              <td>{val.petSym}</td>
+              <td>{val.dateForAppoint}</td>
             </tr>
           ))}
         </tbody>
@@ -158,6 +196,7 @@ const Member = () => {
       <div className="container text-center">
         <div className=" mt-5">
           <h1>Member Page</h1>
+          <h2></h2>
         </div>
         <Button
           className="mt-3"
@@ -166,30 +205,27 @@ const Member = () => {
         >
           Add new request +
         </Button>
+        
         <Tabs
           defaultActiveKey="profile"
           id="fill-tab-example"
           className="mb-3 mt-3"
           fill
         >
-          <Tab eventKey="doctor" title="Requested">
-          {table_request(listRequest)}
+          <Tab eventKey="doctor" title="Requestion">
+            {table_request(listRequest)}
           </Tab>
           <Tab eventKey="member" title="Appointment">
-            test2
+          {table_appointment(appointList)}
           </Tab>
         </Tabs>
       </div>
-
-      <Button className="bt_rightside" onClick={getTest} variant="danger">
-        test
-      </Button>
 
       <Modal show={show} onHide={handleClose}>
         <Modal.Header closeButton>
           <Modal.Title>Request for Appointment</Modal.Title>
         </Modal.Header>
-        <form onSubmit={submit_for_request}>
+        <form ref={formRef} onSubmit={submit_for_request}>
           <Modal.Body>
             <Form.Label>Pet (what is your pet?)</Form.Label>
             <Form.Select

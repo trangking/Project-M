@@ -30,6 +30,30 @@ const fetchAppointData = async () => {
   return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 };
 
+//ดึงข้อมูลของ vaccine
+const fetchVaccineData = async () => {
+  const colRef = collection(db, "vaccine");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
 
+const fetchDoctorData = async () => {
+  const colRef = collection(db, "doctor");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
 
-export {auth , db, fetchRequestData, fetchAppointData };
+const fetchMemberData = async () => {
+  const colRef = collection(db, "member");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
+
+const fetchAdminData = async () => {
+  const colRef = collection(db, "admin");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
+
+export {auth , db, fetchRequestData, fetchAppointData,
+  fetchVaccineData, fetchDoctorData, fetchMemberData, fetchAdminData };

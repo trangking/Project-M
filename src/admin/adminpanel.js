@@ -6,90 +6,97 @@ import Table from "react-bootstrap/Table";
 import Modal from "react-bootstrap/Modal";
 import { useNavigate } from "react-router-dom";
 import "../css/admin.css";
-import { db, auth ,fetchRequestData, fetchAppointData } from "../firebase/firebase1";
-import {  addDoc, collection, deleteDoc, doc } from "firebase/firestore";
+import {
+  db,
+  auth,
+  fetchRequestData,
+  fetchAppointData,
+  fetchVaccineData,
+  fetchDoctorData,
+  fetchMemberData,
+  fetchAdminData
+} from "../firebase/firebase1";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+  setDoc,
+} from "firebase/firestore";
 import React, { useState, useEffect } from "react";
+import { signOut } from "firebase/auth";
 
 const Adminpanel = () => {
   const navigate = useNavigate();
-  const [email, setemail] = useState("");
-  const [password, setpassword] = useState("");
+  const [emailDoctor, setemailDoctor] = useState("");
+  
   const [docName, setdocName] = useState("");
-  const [tel, setTel] = useState("");
-  const [show, setShow] = useState(false);
-  const [pssChange, changePassword] = useState("");
-  const [nameChange, changeName] = useState("");
-  const [phoneChange, changePhone] = useState("");
+  
+  const [vaccineName, setVaccineName] = useState("");
   const [request, setRequest] = useState([]);
   const [appoint, setAppoint] = useState([]);
-
+  const [selectedIdDelete, setSelectedIdDelete] = useState(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [vaccine, setVaccine] = useState([]);
+  const [doctorList, setDoctorList] = useState([]);
+  const [memberList, setMemberList] = useState([]);
+  const [showVaccine, setShowVaccine] = useState(false);
+  const [vaccineAmount, setVaccineAmount] = useState();
+  const [selectVaccineId, setVaccineIdSelect] = useState();
   const user = auth.currentUser;
 
-  const handleClose = () => setShow(false);
-  const handleShow = (data) => {
-    setShow(true);
-    setdocName(data.namedoc);
-    setTel(data.tel);
-    setpassword(data.passwordLogin);
-    setemail(data.emailLogin);
+  const handleCloseDelete = () => setShowDelete(false);
+  const handleShowDelete = (id) => {
+    setSelectedIdDelete(id);
+    setShowDelete(true);
   };
 
-  const test =() =>{
-    console.log(request);
+
+  const handShowVaccine = (val) => {
+    setShowVaccine(true);
+    setVaccineName(val.vaccineName);
+    setVaccineAmount(val.amount);
+    setVaccineIdSelect(val.id);
+  };
+  const handCloseVaccine = () => {
+    setShowVaccine(false);
+  };
+
+  const fetchData = async () => {
+    const requestData = await fetchRequestData();
+    const appointData = await fetchAppointData();
+    const vaccineData = await fetchVaccineData();
+    const doctorData = await fetchDoctorData();
+    const memberData = await fetchMemberData();
+    setRequest(requestData);
+    setAppoint(appointData);
+    setVaccine(vaccineData);
+    setDoctorList(doctorData)
+    setMemberList(memberData)
+  };
+
+  const isAdmin = async() =>{
+    const adminData = await fetchAdminData();
+    const listAdminUid=[];
+
+    adminData.forEach((i) => {     
+      listAdminUid.push(i.adminUid);
+    });
+   
+    return listAdminUid.includes(user.uid);
   }
 
-
-
   useEffect(() => {
-    const fetchData = async () => {
-      const requestData = await fetchRequestData();
-      const appointData = await fetchAppointData ();
-      setRequest(requestData);
-      setAppoint(appointData);
-    };
-    fetchData();
+    if (!user) navigate("/login");
+    else {
+      if(isAdmin) fetchData(); 
+    }
   }, []);
 
-  const list_doctor = [
-    {
-      id: "1",
-      namedoc: "Poke",
-      emailLogin: "Earn@hot.com",
-      passwordLogin: "pokemon",
-      tel: "0100000000",
-    },
-    {
-      id: "2",
-      namedoc: "Mon",
-      emailLogin: "Share@hot.com",
-      passwordLogin: "pokemon",
-      tel: "0200000000",
-    },
-    {
-      id: "3",
-      namedoc: "zet",
-      emailLogin: "Tonnam@hot.com",
-      passwordLogin: "pokemon",
-      tel: "0300000000",
-    },
-    {
-      id: "4",
-      namedoc: "Non",
-      emailLogin: "Mem@hot.com",
-      passwordLogin: "pokemon",
-      tel: "0400000000",
-    },
-  ];
-
-  const list_member = [
-    { id: "1", namedoc: "Ben", nickname: "Earn" },
-    { id: "2", namedoc: "Milk", nickname: "Share" },
-    { id: "3", namedoc: "James", nickname: "Tonnam" },
-    { id: "4", namedoc: "Ten", nickname: "Mem" },
-  ];
 
   //ยืนยัน request ถ้ากด approve จะเพิ่มข้อมูลนั้นๆใน appointment
-  const approveRequest = async(data) =>{
+  const approveRequest = async (data) => {
     const docRef = await addDoc(collection(db, "appointment"), {
       userUid: data.userUid,
       userEmail: data.userEmail,
@@ -97,57 +104,97 @@ const Adminpanel = () => {
       petName: data.petName,
       petSym: data.petSym,
       dateForAppoint: data.dateForAppoint,
-      checkedVer: false
+      checkedVer: false,
+      vaccineName: "",
     });
-  }
+    await deleteData(data.id, 1);
+    const appointmentData = await fetchAppointData();
+    setAppoint(appointmentData);
+  };
 
   //เอาไว้ลบข้อมูล เมื่อกด no approve
-  const deleteData = async(dataId) =>{
-    await deleteDoc(doc(db, "request", dataId));
-    const requestData = await fetchRequestData();
-    setRequest(requestData);
-  }
+  const deleteData = async (dataId, whichOne) => {
+    if(whichOne ==1){
+      await deleteDoc(doc(db, "request", dataId));
+      const requestData = await fetchRequestData();
+      setRequest(requestData);
+      setShowDelete(false);
+    }else if(whichOne ==2){
+      await deleteDoc(doc(db, "doctor", dataId));
+      const doctorData = await fetchDoctorData();
+      setDoctorList(doctorData);
+      
+    }else{
+      await deleteDoc(doc(db, "vaccine", dataId));
+      const viccineData = await fetchVaccineData();
+      setVaccine(viccineData);
+    }
+  };
 
+  const addDoctor = async(e)=>{
+    e.preventDefault();
+    const docRef = await addDoc(collection(db, "doctor"), {
+      doctorName: docName,
+      doctorEmail: emailDoctor,
+    });
+    const doctorData = await fetchDoctorData();
+    setDoctorList(doctorData)
+  }
 
   //table doctor
   const table_doctor = (data) => {
     return (
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Email Login(Can't Change)</th>
-            <th>Password Login</th>
-            <th>Phone Number</th>
-            <th>Appointment</th>
-            <th></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((val, index) => (
-            <tr key={index}>
-              <td>{val.id}</td>
-              <td>{val.namedoc}</td>
-              <td>{val.emailLogin}</td>
-              <td>{val.passwordLogin}</td>
-              <td>{val.tel}</td>
-              <td>
-                <Button variant="outline-primary">See</Button>
-              </td>
-              <td>
-                <Button variant="warning" onClick={() => handleShow(val)}>
-                  Update
-                </Button>
-              </td>
-              <td>
-                <Button variant="danger">Delete</Button>
-              </td>
+      <>
+        <form onSubmit={addDoctor}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Control
+                type="email"
+                placeholder="Doctor e-mail"
+                onChange={(e) => setemailDoctor(e.target.value)}
+                required
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Control
+                type="text"
+                placeholder="Doctor Name"
+                onChange={(e) => setdocName(e.target.value)}
+                required
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" type="submit">
+              Add Doctor
+            </Button>
+          </Modal.Footer>
+        </form>
+
+        <Table striped bordered hover className="mt-3">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Email </th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody>
+            {data.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.doctorName}</td>
+                <td>{val.doctorEmail}</td>
+                <td>
+                  <Button variant="danger" onClick={()=> deleteData(val.id, 2)}>Delete</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
     );
   };
 
@@ -167,7 +214,7 @@ const Adminpanel = () => {
           </tr>
         </thead>
         <tbody>
-          { request &&
+          {request &&
             request.map((val, index) => (
               <tr key={index}>
                 <td>{index + 1}</td>
@@ -177,8 +224,36 @@ const Adminpanel = () => {
                 <td>{val.typePet}</td>
                 <td>{val.dateForAppoint}</td>
                 <td className="Controlbutton">
-                  <Button variant="outline-success" onClick={() => approveRequest(val)}>approve</Button>
-                  <Button variant="outline-danger" onClick={() => deleteData(val.id)}>Not approved</Button>
+                  <Button
+                    variant="outline-success"
+                    onClick={() => approveRequest(val)}
+                  >
+                    approve
+                  </Button>
+
+                  <Button
+                    variant="outline-danger"
+                    onClick={() => handleShowDelete(val.id)}
+                  >
+                    Not approved
+                  </Button>
+                  <Modal show={showDelete} onHide={handleCloseDelete}>
+                    <Modal.Header closeButton>
+                      <Modal.Title>Are Sure</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>ตรวจสอบว่าข้อมูลว่าลบถูกหรือไม่</Modal.Body>
+                    <Modal.Footer>
+                      <Button variant="secondary" onClick={handleCloseDelete}>
+                        Close
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => deleteData(selectedIdDelete, 1)}
+                      >
+                        Yes Delete
+                      </Button>
+                    </Modal.Footer>
+                  </Modal>
                 </td>
               </tr>
             ))}
@@ -203,7 +278,7 @@ const Adminpanel = () => {
           </tr>
         </thead>
         <tbody>
-          { appoint &&
+          {appoint &&
             appoint.map((val, index) => (
               <tr key={index}>
                 <td>{index + 1}</td>
@@ -212,8 +287,7 @@ const Adminpanel = () => {
                 <td>{val.petSym}</td>
                 <td>{val.typePet}</td>
                 <td>{val.dateForAppoint}</td>
-                <td>{val.checkedVer? 'Checked':'Not yet Checked'}</td>
-              
+                <td>{val.checkedVer ? "Checked" : "Not yet Checked"}</td>
               </tr>
             ))}
         </tbody>
@@ -221,13 +295,111 @@ const Adminpanel = () => {
     );
   };
 
+  const table_vaccine = () => {
+    return (
+      <Table striped bordered hover className="mt-3">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Vaccine Name</th>
+            <th>Amount</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {vaccine &&
+            vaccine.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.vaccineName}</td>
+                <td>{val.amount}</td>
+                <td>
+                  <Button
+                    variant="outline-success"
+                    onClick={() => handShowVaccine(val)}
+                  >
+                    Manage Vaccine
+                  </Button>
+                </td>
+                <td>
+                  <Button variant="danger" onClick={()=> deleteData(val.id, 3)}>Delete</Button>
+                </td>
+
+                {/* <td>{val.checkedVer ? "Checked" : "Not yet Checked"}</td> */}
+              </tr>
+            ))}
+        </tbody>
+      </Table>
+    );
+  };
+
+  const table_member =()=>{
+    return(
+      <Table striped bordered hover className="mt-3">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Email</th>
+              <th>Uid </th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            {memberList.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.memberEmail}</td>
+                <td>{val.id}</td>
+                
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+    )
+  }
+
+  const updateVaccineData = async (e) => {
+    e.preventDefault();
+    const vacRef = doc(db, "vaccine", selectVaccineId);
+    await updateDoc(vacRef, {
+      vaccineName: vaccineName,
+      amount: parseInt(vaccineAmount),
+    });
+
+    fetchData();
+    setShowVaccine(false);
+  };
+
+  const addVaccineData = async (e) => {
+    e.preventDefault();
+    const docRef = await addDoc(collection(db, "vaccine"), {
+      vaccineName: vaccineName,
+      amount: parseInt(vaccineAmount),
+    });
+    const vaccineData = await fetchVaccineData();
+    setVaccine(vaccineData);
+  };
+
+  const signOutFunc = async () => {
+    signOut(auth)
+      .then(() => {
+        navigate("/login");
+      })
+      .catch((error) => {
+        // An error happened.
+      });
+  };
+
   return (
     <div>
       <div className="container text-center">
         <div className="row align-items-start mt-5">
           <h1>Admin Panel</h1>
-          <button onClick={test}>test</button>
         </div>
+        <Button className="bt_rightside" onClick={signOutFunc} variant="danger">
+        Sign Out
+      </Button>
         <Tabs
           defaultActiveKey="profile"
           id="fill-tab-example"
@@ -241,72 +413,75 @@ const Adminpanel = () => {
             {table_appointment()}
           </Tab>
           <Tab eventKey="doctor" title="Doctor">
-            {table_doctor(list_doctor)}
+            {table_doctor(doctorList)}
           </Tab>
           <Tab eventKey="member" title="Member">
-            {table_doctor(list_member)}
+            {table_member()}
           </Tab>
-          <Tab eventKey="vaccine" title="Vaccine"></Tab>
-          
-          
+          <Tab eventKey="vaccine" title="Vaccine">
+            <form onSubmit={addVaccineData}>
+              <Modal.Body>
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    type="text"
+                    placeholder="Vaccine's Name"
+                    onChange={(e) => setVaccineName(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    type="number"
+                    placeholder="Amount"
+                    onChange={(e) => setVaccineAmount(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="primary" type="submit">
+                  Add Vaccine
+                </Button>
+              </Modal.Footer>
+            </form>
+            {table_vaccine()}
+          </Tab>
         </Tabs>
       </div>
 
-      <Modal show={show} onHide={handleClose}>
+      <Modal show={showVaccine} onHide={handCloseVaccine}>
         <Modal.Header closeButton>
-          <Modal.Title>Modal heading</Modal.Title>
+          <Modal.Title>Vaccine</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          {/* // Form change password */}
-          <Form>
+        <form onSubmit={updateVaccineData}>
+          <Modal.Body>
             <Form.Group className="mb-3">
-              <Form.Label>Email address</Form.Label>
-              <Form.Control type="email" value={email} disabled />
-            </Form.Group>
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="text"
-              id="docname"
-              value={password}
-              onChange={(e) => changePassword(e.target.value)}
-            />
-
-            <Modal.Footer>
-              <Button variant="danger" onClick={handleClose}>
-                Change Password
-              </Button>
-            </Modal.Footer>
-          </Form>
-
-          {/* // Form change normal data */}
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
               <Form.Control
                 type="text"
-                id="docname"
-                value={docName}
-                onChange={(e) => changeName(e.target.value)}
-              />
-
-              <Form.Label>Phone Number</Form.Label>
-              <Form.Control
-                type="text"
-                id="phonenum"
-                value={tel}
-                onChange={(e) => changePhone(e.target.value)}
+                placeholder="Vaccine's Name"
+                value={vaccineName}
+                onChange={(e) => setVaccineName(e.target.value)}
+                required
               />
             </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleClose}>
-            Save Changes
-          </Button>
-        </Modal.Footer>
+
+            <Form.Group className="mb-3">
+              <Form.Control
+                type="number"
+                placeholder="Amount"
+                value={vaccineAmount}
+                onChange={(e) => setVaccineAmount(e.target.value)}
+                required
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" type="submit">
+              Submit
+            </Button>
+          </Modal.Footer>
+        </form>
       </Modal>
     </div>
   );
