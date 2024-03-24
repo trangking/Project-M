@@ -14,7 +14,8 @@ import {
   fetchVaccineData,
   fetchDoctorData,
   fetchMemberData,
-  fetchAdminData
+  fetchAdminData,
+  fetchTypeData
 } from "../firebase/firebase1";
 import {
   addDoc,
@@ -41,9 +42,11 @@ const Adminpanel = () => {
   const [vaccine, setVaccine] = useState([]);
   const [doctorList, setDoctorList] = useState([]);
   const [memberList, setMemberList] = useState([]);
+  const [typeList, setTypeList] = useState([]);
   const [showVaccine, setShowVaccine] = useState(false);
   const [vaccineAmount, setVaccineAmount] = useState();
   const [selectVaccineId, setVaccineIdSelect] = useState();
+  const [type, setType] = useState();
   const user = auth.currentUser;
 
   const handleCloseDelete = () => setShowDelete(false);
@@ -69,11 +72,13 @@ const Adminpanel = () => {
     const vaccineData = await fetchVaccineData();
     const doctorData = await fetchDoctorData();
     const memberData = await fetchMemberData();
+    const typeData = await fetchTypeData();
     setRequest(requestData);
     setAppoint(appointData);
     setVaccine(vaccineData);
-    setDoctorList(doctorData)
-    setMemberList(memberData)
+    setDoctorList(doctorData);
+    setMemberList(memberData);
+    setTypeList(typeData);
   };
 
   const isAdmin = async() =>{
@@ -124,10 +129,14 @@ const Adminpanel = () => {
       const doctorData = await fetchDoctorData();
       setDoctorList(doctorData);
       
-    }else{
+    }else if(whichOne ==3){
       await deleteDoc(doc(db, "vaccine", dataId));
       const viccineData = await fetchVaccineData();
       setVaccine(viccineData);
+    }else{
+      await deleteDoc(doc(db, "typePet", dataId));
+      const typeData = await fetchTypeData();
+      setTypeList(typeData);
     }
   };
 
@@ -341,7 +350,9 @@ const Adminpanel = () => {
             <tr>
               <th>#</th>
               <th>Email</th>
-              <th>Uid </th>
+              <th>Username</th>
+              <th>Phone Number</th>
+              <th>Address</th>
               
             </tr>
           </thead>
@@ -350,7 +361,36 @@ const Adminpanel = () => {
               <tr key={index}>
                 <td>{index + 1}</td>
                 <td>{val.memberEmail}</td>
-                <td>{val.id}</td>
+                <td>{val.username}</td>
+                <td>{val.phoneNumber}</td>
+                <td>{val.address}</td>
+                
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+    )
+  }
+
+  const table_type_pet =()=>{
+    return(
+      <Table striped bordered hover className="mt-3">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>type</th>
+              <th></th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            {typeList.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.typePet}</td>
+                <td>
+                  <Button variant="danger" onClick={()=> deleteData(val.id, 4)}>Delete</Button>
+                </td>
                 
               </tr>
             ))}
@@ -379,6 +419,16 @@ const Adminpanel = () => {
     });
     const vaccineData = await fetchVaccineData();
     setVaccine(vaccineData);
+  };
+
+  const addTypeData = async (e) => {
+    e.preventDefault();
+    const docRef = await addDoc(collection(db, "typePet"), {
+      typePet: type,
+      
+    });
+    const typeData = await fetchTypeData();
+    setTypeList(typeData);
   };
 
   const signOutFunc = async () => {
@@ -446,6 +496,28 @@ const Adminpanel = () => {
               </Modal.Footer>
             </form>
             {table_vaccine()}
+          </Tab>
+
+          <Tab eventKey="typePet" title="Type Pet">
+            <form onSubmit={addTypeData}>
+              <Modal.Body>
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    type="text"
+                    placeholder="Pet Type"
+                    onChange={(e) => setType(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="primary" type="submit">
+                  Add Type
+                </Button>
+              </Modal.Footer>
+            </form>
+            {table_type_pet()}
           </Tab>
         </Tabs>
       </div>

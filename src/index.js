@@ -2,13 +2,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import "bootstrap/dist/css/bootstrap.min.css";
 import App from './App';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Admin from "./admin/index.js";
 import Adminpanel from "./admin/adminpanel.js";
 import Login from "./login/index.js"
 import Member from "./member/index.js"
 import Doctor from "./doctor/index.js"
-
+import Register from './login/register.js';
+import Profile from './member/profile.js';
 
 import reportWebVitals from './reportWebVitals';
 
@@ -16,6 +17,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <BrowserRouter>
     {/* <App /> */}
+    
     <Routes>
         
         <Route index element={<App />} />
@@ -24,6 +26,9 @@ root.render(
         <Route path="/login" element={<Login />} />
         <Route path="/member" element={<Member />} />
         <Route path="/doctor" element={<Doctor />} />
+        <Route path="/login/signup" element={<Register />} />
+        <Route path="/member/profile" element={<Profile />} />
+        
         
         
       </Routes>

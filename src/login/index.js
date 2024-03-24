@@ -74,12 +74,12 @@ const Login = () => {
       });
       if(!listMember.includes(check.uid)){
           
-        await setDoc(doc(db, "member", check.uid), {
-          memberEmail: check.email,
+        navigate("/login/signup");
+        // await setDoc(doc(db, "member", check.uid), {
+        //   memberEmail: check.email,
           
-        });
-      }
-      navigate("/member");
+        // });
+      }else navigate("/member");
     }
   };
 

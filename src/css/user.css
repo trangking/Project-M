@@ -12,6 +12,24 @@
     transform: translate(-50%, -50%)
     
 }
+
+.centerEvery{
+    width: 500px;
+    padding: 30px 50px;
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%)
+}
+
 .input-group-append {
     cursor: pointer;
   }
+
+.profile_center{
+    padding: 30px 50px;
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%)
+}

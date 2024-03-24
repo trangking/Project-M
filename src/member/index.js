@@ -9,15 +9,15 @@ import Table from "react-bootstrap/Table";
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth, db } from "../firebase/firebase1";
+import { auth, db, fetchTypeData } from "../firebase/firebase1";
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import "../css/user.css";
 import DatePicker from "react-datepicker";
 
+import Col from "react-bootstrap/Col";
 import "react-datepicker/dist/react-datepicker.css";
 
 const Member = () => {
-  
   const [show, setShow] = useState(false);
   const [startDate, setStartDate] = useState(new Date());
   const navigate = useNavigate();
@@ -28,15 +28,14 @@ const Member = () => {
   const [alert, setAlert] = useState(false);
   const [listRequest, setRequest] = useState([]);
   const [appointList, setAppoint] = useState([]);
+  const [historyList, setHistory] = useState([])
+  const [typeList, setTypeList] = useState([]);
   const formRef = useRef(null);
-
- 
 
   useEffect(() => {
     if (!user) navigate("/login");
     else {
       queryData();
-      
     }
   }, []);
 
@@ -60,6 +59,7 @@ const Member = () => {
     );
     let listObj = [];
     let appointListQuery = [];
+    let historyListQuery = [];
     const querySnapshot = await getDocs(q);
     const appointSnapshot = await getDocs(appointQuery);
     querySnapshot.forEach((doc) => {
@@ -67,15 +67,27 @@ const Member = () => {
     });
 
     appointSnapshot.forEach((doc) => {
-      appointListQuery.push(doc.data());
+      
+      if(doc.data().checkedVer){
+        historyListQuery.push(doc.data());
+      }else{
+        appointListQuery.push(doc.data());
+      }
+      
     });
-    setAppoint(appointListQuery)
+
+    const type = await fetchTypeData();
+    setTypeList(type);
+    setAppoint(appointListQuery);
+    setHistory(historyListQuery);
     setRequest(listObj);
   };
 
   const submit_for_request = async (event) => {
     event.preventDefault();
+
     let petType = pet;
+
     const list_month = [
       "Jan",
       "Feb",
@@ -96,9 +108,11 @@ const Member = () => {
       list_month[startDate.getMonth()] +
       " " +
       startDate.getFullYear();
-    if (pet == "") {
-      petType = "Dog";
+
+    if (petType == "") {
+      petType = "Cat";
     }
+
     const docRef = await addDoc(collection(db, "request"), {
       userUid: user.uid,
       userEmail: user.email,
@@ -107,10 +121,7 @@ const Member = () => {
       petSym: petSym,
       dateForAppoint: dateToappoint,
     });
-    console.log("Pet Type:", petType);
-    console.log("Pet Name:", petName);
-    console.log("Pet Symptom:", petSym);
-    console.log("Appointment Date:", dateToappoint);
+    setPet("");
     setAlert(true);
     setTimeout(() => {
       setAlert(false);
@@ -165,22 +176,28 @@ const Member = () => {
         <thead>
           <tr>
             <th>#</th>
-            
+
             <th>Pet(type)</th>
             <th>Pet Name</th>
             <th>Pet Symptom</th>
             <th>On date</th>
+            
           </tr>
         </thead>
         <tbody>
           {data.map((val, index) => (
             <tr key={index}>
               <td>{index + 1}</td>
-              
+
               <td>{val.typePet}</td>
               <td>{val.petName}</td>
               <td>{val.petSym}</td>
               <td>{val.dateForAppoint}</td>
+              {/* <td>{val.checkedVer ? (
+                    "Checked"
+                  ) : (
+                    "No Check"
+                  )}</td> */}
             </tr>
           ))}
         </tbody>
@@ -188,16 +205,145 @@ const Member = () => {
     );
   };
 
+  const table_history = (data) =>{
+    return (
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>#</th>
+
+            <th>Pet(type)</th>
+            <th>Pet Name</th>
+            <th>Pet Symptom</th>
+            <th>On date</th>
+            
+            <th>Vaccine</th>
+            
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((val, index) => (
+            <tr key={index}>
+              <td>{index + 1}</td>
+
+              <td>{val.typePet}</td>
+              <td>{val.petName}</td>
+              <td>{val.petSym}</td>
+              <td>{val.dateForAppoint}</td>
+              <td>{ val.vaccineName != "" ? (
+                      val.vaccineName
+                    ) : (
+                      "None"
+                    )}</td>
+              {/* <td>{val.checkedVer ? (
+                    "Checked"
+                  ) : (
+                    "No Check"
+                  )}</td> */}
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    );
+  }
+
+  const form_select = () => {
+    return (
+      <form ref={formRef} onSubmit={submit_for_request}>
+        <Modal.Body>
+          <Form.Label>Pet (what is your pet?)</Form.Label>
+          <Form.Select
+            className="mb-3"
+            aria-label="Default select example"
+            onChange={(e) => setPet(e.target.value)}
+            required
+          >
+            <option value="Cat">Cat</option>
+            {typeList.map((i) =>
+              i.typePet !== "Cat" ? (
+                <option key={i.id} value={i.typePet}>
+                  {i.typePet}
+                </option>
+              ) : null
+            )}
+          </Form.Select>
+
+          <Form.Group className="mb-3">
+            <Form.Control
+              type="text"
+              placeholder="Pet's Name"
+              onChange={(e) => setPetname(e.target.value)}
+              required
+            />
+            <Form.Control.Feedback type="invalid">
+              Please choose a username.
+            </Form.Control.Feedback>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Control
+              type="text"
+              placeholder="Symptom"
+              onChange={(e) => setPetSym(e.target.value)}
+              required
+            />
+            <Form.Control.Feedback type="invalid">
+              Please choose a username.
+            </Form.Control.Feedback>
+          </Form.Group>
+
+          <Form.Group className="mb-3 text-center">
+            <Form.Label>Appointment Date</Form.Label>
+            <Row className="g-2">
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => setStartDate(date)}
+              />
+            </Row>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+          <Button variant="primary" type="submit">
+            Submit
+          </Button>
+        </Modal.Footer>
+        <Alert show={alert} variant="success">
+          Sent the request!
+        </Alert>
+      </form>
+    );
+  };
+
   return (
     <div>
-      <Button className="bt_rightside" onClick={signOutFunc} variant="danger">
-        Sign Out
-      </Button>
-      <div className="container text-center">
-        <div className=" mt-5">
-          <h1>Member Page</h1>
-          <h2></h2>
-        </div>
+      <div className="container text-center mt-5">
+        <Row>
+          <Col>
+            
+            <Button
+              className="bt_rightside"
+              onClick={()=>{navigate('/member/profile')}}
+              variant="primary"
+            >
+              Profile
+            </Button>
+          </Col>
+          <Col xs={6}>
+            <h1>Member Page</h1>
+          </Col>
+          <Col>
+            <Button
+              className="bt_rightside"
+              onClick={signOutFunc}
+              variant="danger"
+            >
+              Sign Out
+            </Button>
+          </Col>
+        </Row>
         <Button
           className="mt-3"
           variant="success"
@@ -205,7 +351,7 @@ const Member = () => {
         >
           Add new request +
         </Button>
-        
+
         <Tabs
           defaultActiveKey="profile"
           id="fill-tab-example"
@@ -216,7 +362,10 @@ const Member = () => {
             {table_request(listRequest)}
           </Tab>
           <Tab eventKey="member" title="Appointment">
-          {table_appointment(appointList)}
+            {table_appointment(appointList)}
+          </Tab>
+          <Tab eventKey="history" title="History">
+            {table_history(historyList)}
           </Tab>
         </Tabs>
       </div>
@@ -225,68 +374,7 @@ const Member = () => {
         <Modal.Header closeButton>
           <Modal.Title>Request for Appointment</Modal.Title>
         </Modal.Header>
-        <form ref={formRef} onSubmit={submit_for_request}>
-          <Modal.Body>
-            <Form.Label>Pet (what is your pet?)</Form.Label>
-            <Form.Select
-              className="mb-3"
-              aria-label="Default select example"
-              onChange={(e) => setPet(e.target.value)}
-              required
-            >
-              <option value="Dog">Dog</option>
-              <option value="Cat">Cat</option>
-              <option value="Rabbit">Rabbit</option>
-              <option value="Horse">Horse</option>
-              <option value="Mouse">Mouse</option>
-            </Form.Select>
-
-            <Form.Group className="mb-3">
-              <Form.Control
-                type="text"
-                placeholder="Pet's Name"
-                onChange={(e) => setPetname(e.target.value)}
-                required
-              />
-              <Form.Control.Feedback type="invalid">
-                Please choose a username.
-              </Form.Control.Feedback>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Control
-                type="text"
-                placeholder="Symptom"
-                onChange={(e) => setPetSym(e.target.value)}
-                required
-              />
-              <Form.Control.Feedback type="invalid">
-                Please choose a username.
-              </Form.Control.Feedback>
-            </Form.Group>
-
-            <Form.Group className="mb-3 text-center">
-              <Form.Label>Appointment Date</Form.Label>
-              <Row className="g-2">
-                <DatePicker
-                  selected={startDate}
-                  onChange={(date) => setStartDate(date)}
-                />
-              </Row>
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={handleClose}>
-              Close
-            </Button>
-            <Button variant="primary" type="submit">
-              Submit
-            </Button>
-          </Modal.Footer>
-          <Alert show={alert} variant="success">
-            Sent the request!
-          </Alert>
-        </form>
+        {form_select()}
       </Modal>
     </div>
   );

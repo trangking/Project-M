@@ -55,5 +55,11 @@ const fetchAdminData = async () => {
   return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 };
 
-export {auth , db, fetchRequestData, fetchAppointData,
+const fetchTypeData = async () => {
+  const colRef = collection(db, "typePet");
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
+
+export {auth , db, fetchTypeData, fetchRequestData, fetchAppointData,
   fetchVaccineData, fetchDoctorData, fetchMemberData, fetchAdminData };
