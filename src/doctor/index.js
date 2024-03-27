@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import DatePicker from "react-datepicker";
 import { useNavigate } from "react-router-dom";
 import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
@@ -11,10 +12,13 @@ import {
   auth,
   fetchAppointData,
   fetchVaccineData,
-  fetchDoctorData
+  fetchDoctorData,
+  fetchRequestData,
+  fetchMemberData,
+  fetchTypeData
 } from "../firebase/firebase1";
 import { signOut } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, addDoc, collection , deleteDoc } from "firebase/firestore";
 
 const Doctor = () => {
   const [appoint, setAppoint] = useState([]);
@@ -22,16 +26,31 @@ const Doctor = () => {
   const [vaccine, setVaccine] = useState("None");
   const [vaccineData, setDataVaccine] = useState([]);
   const [show, setShow] = useState(false);
+  const [showMember, setShowMember] = useState(false);
+  const [request, setRequest] = useState([]);
+  const [memberList, setMemberList] = useState([]);
+  const [showDelete, setShowDelete] = useState(false);
+  const [selectedIdDelete, setSelectedIdDelete] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [objMember, setObjMember] = useState({});
+  const [pet, setPet] = useState("Cat");
+  const [typeList, setTypeList] = useState([]);
+  const [petName, setPetname] = useState("");
+  const [petSym, setPetSym] = useState("");
+  const [startDate, setStartDate] = useState(new Date());
   const navigate = useNavigate();
   const user = auth.currentUser;
 
   //get data from firestore and separate between checked and not yet check
   const fetchData = async () => {
     const appointData = await fetchAppointData();
+    const requestData = await fetchRequestData();
+    const memberData = await fetchMemberData();
+    setRequest(requestData);
     const dataQuery = queryAppoint(appointData);
     setAppoint(dataQuery.notAppoint);
     setChecked(dataQuery.checkedQuery);
+    setMemberList(memberData);
   };
 
 
@@ -58,6 +77,12 @@ const Doctor = () => {
     
   }, []);
 
+  const handleCloseDelete = () => setShowDelete(false);
+  const handleShowDelete = (id) => {
+    setSelectedIdDelete(id);
+    setShowDelete(true);
+  };
+
   //get appoint data which check = false
   const queryAppoint = (data) => {
     let appointQuered = [];
@@ -78,11 +103,23 @@ const Doctor = () => {
   const handleClose = () => {
     setShow(false);
   };
-  const handleShow = async (id) => {
-    setShow(true);
+  const handleClose_member = () =>{
+    setShowMember(false);
+  }
+  const handleShow = async (id, i) => {
+    if(i===1){
+      setShow(true);
     setSelectedId(id);
     const data = await fetchVaccineData();
     setDataVaccine(data);
+    }else{
+      setShowMember(true);
+      const type = await fetchTypeData();
+      setTypeList(type);
+     
+      setObjMember(id);
+    }
+    
   };
 
   const docUseVaccine = async (e) => {
@@ -150,7 +187,7 @@ const Doctor = () => {
                   ) : (
                     <Button
                       variant="warning"
-                      onClick={() => handleShow(val.id)}
+                      onClick={() => handleShow(val.id, 1)}
                     >
                       Vaccine
                     </Button>
@@ -185,9 +222,173 @@ const Doctor = () => {
       });
   };
 
-  // const testVac = () => {
-  //   console.log(vaccineData.length);
-  // };
+  const deleteData = async(dataId) =>{
+    await deleteDoc(doc(db, "request", dataId));
+    const requestData = await fetchRequestData();
+    setRequest(requestData);
+    setShowDelete(false);
+  }
+
+  const approveRequest = async (data) => {
+    const docRef = await addDoc(collection(db, "appointment"), {
+      userUid: data.userUid,
+      userEmail: data.userEmail,
+      typePet: data.typePet,
+      petName: data.petName,
+      petSym: data.petSym,
+      dateForAppoint: data.dateForAppoint,
+      checkedVer: false,
+      vaccineName: "",
+    });
+    await deleteData(data.id, 1);
+    fetchData();
+  };
+
+  const table_request = () => {
+    return (
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Requester Email</th>
+            <th>Pet Name</th>
+            <th>Pet Symptoms</th>
+            <th>Type</th>
+            <th>Appointment Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request &&
+            request.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.userEmail}</td>
+                <td>{val.petName}</td>
+                <td>{val.petSym}</td>
+                <td>{val.typePet}</td>
+                <td>{val.dateForAppoint}</td>
+                <td className="Controlbutton">
+                  <Button
+                    variant="outline-success"
+                    onClick={() => approveRequest(val)}
+                  >
+                    approve
+                  </Button>
+
+                  <Button
+                    variant="outline-danger"
+                    onClick={() => handleShowDelete(val.id)}
+                  >
+                    Not approved
+                  </Button>
+                  <Modal show={showDelete} onHide={handleCloseDelete}>
+                    <Modal.Header closeButton>
+                      <Modal.Title>Are Sure</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>ตรวจสอบว่าข้อมูลว่าลบถูกหรือไม่</Modal.Body>
+                    <Modal.Footer>
+                      <Button variant="secondary" onClick={handleCloseDelete}>
+                        Close
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => deleteData(selectedIdDelete, 1)}
+                      >
+                        Yes Delete
+                      </Button>
+                    </Modal.Footer>
+                  </Modal>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </Table>
+    );
+  };
+
+  const table_member =()=>{
+    return(
+      <Table striped bordered hover className="mt-3">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Phone Number</th>
+              <th>Address</th>
+              <th>Make Appointment</th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            {memberList.map((val, index) => (
+              <tr key={index}>
+                <td>{index + 1}</td>
+                <td>{val.memberEmail}</td>
+                <td>{val.username}</td>
+                <td>{val.phoneNumber}</td>
+                <td>{val.address}</td>
+                <td>
+                <Button
+                      variant="success"
+                      onClick={() => handleShow({id:val.id, emailMember:val.memberEmail}, 2)}
+                    >
+                      DO
+                    </Button>
+                </td>
+                
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+    )
+  }
+
+  const doctor_submit_appointment = async(e) =>{
+    e.preventDefault();
+ 
+  const list_month = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Agu",
+    "Sep",
+    "Oct",
+    "Nor",
+    "Dis",
+  ];
+  const dateToappoint =
+    startDate.getDate() +
+    " " +
+    list_month[startDate.getMonth()] +
+    " " +
+    startDate.getFullYear();
+    
+    
+    await addDoc(collection(db, "appointment"),{
+      userUid: objMember.id,
+      userEmail: objMember.emailMember,
+      typePet: pet,
+      petName: petName,
+      petSym: petSym,
+      dateForAppoint: dateToappoint,
+      checkedVer: false,
+      vaccineName: "",
+    })
+
+    const appointData = await fetchAppointData();
+    const dataQuery = queryAppoint(appointData);
+    setAppoint(dataQuery.notAppoint);
+    setChecked(dataQuery.checkedQuery);
+    setShowMember(false);
+  }
+  
+
   return (
     <>
       <div className="container text-center">
@@ -203,11 +404,17 @@ const Doctor = () => {
           className="mb-3 mt-3"
           fill
         >
+          <Tab eventKey="request" title="Requestion">
+            {table_request(request)}
+          </Tab>
           <Tab eventKey="doctor" title="New Appointment">
             {table_appointment(appoint)}
           </Tab>
-          <Tab eventKey="member" title="Checked">
+          <Tab eventKey="appointment" title="Checked">
             {table_appointment(checked)}
+          </Tab>
+          <Tab eventKey="member" title="Member">
+            {table_member()}
           </Tab>
         </Tabs>
       </div>
@@ -242,6 +449,76 @@ const Doctor = () => {
             </Button>
           </Modal.Footer>
         </form>
+      </Modal>
+
+      <Modal show={showMember} onHide={handleClose_member}>
+      <Modal.Header closeButton>
+          <Modal.Title>Appoint</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+       
+          <Form onSubmit={doctor_submit_appointment}>
+          <Form.Group className="mb-3">
+            <Form.Control
+              type="text"
+             
+              defaultValue={objMember.emailMember}
+              disabled
+            readOnly
+              
+              required
+            />
+
+          </Form.Group>
+          <Form.Select
+            className="mb-3"
+            aria-label="Default select example"
+            onChange={(e) => setPet(e.target.value)}
+            required
+          >
+            <option value="Cat">Cat</option>
+            {typeList.map((i) =>
+              i.typePet !== "Cat" ? (
+                <option key={i.id} value={i.typePet}>
+                  {i.typePet}
+                </option>
+              ) : null
+            )}
+          </Form.Select>
+          <Form.Group className="mb-3">
+            <Form.Control
+              type="text"
+              placeholder="Pet's Name"
+              onChange={(e) => setPetname(e.target.value)}
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Control
+              type="text"
+              placeholder="Symptom"
+              onChange={(e) => setPetSym(e.target.value)}
+              required
+            />
+          
+          </Form.Group>
+
+
+          <Form.Group className="mb-3 text-center">
+            <Form.Label>Appointment Date: </Form.Label>
+           
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => setStartDate(date)}
+              />
+          
+          </Form.Group>
+          <Button variant="primary" type="submit">
+            Submit
+          </Button>
+          </Form>
+        </Modal.Body>
       </Modal>
     </>
   );
